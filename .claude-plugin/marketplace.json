@@ -1,0 +1,23 @@
+{
+  "name": "appcharge-skills",
+  "owner": {
+    "name": "Appcharge",
+    "email": "support@appcharge.com"
+  },
+  "metadata": {
+    "description": "Official Appcharge agent skills for clients and partners."
+  },
+  "plugins": [
+    {
+      "name": "appcharge-skills",
+      "source": "./",
+      "description": "Agent skills for Appcharge platform integration, APIs, dashboards, and operations.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Appcharge"
+      },
+      "category": "productivity",
+      "tags": ["appcharge", "payments", "monetization"]
+    }
+  ]
+}

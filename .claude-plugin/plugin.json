@@ -1,0 +1,11 @@
+{
+  "name": "appcharge-skills",
+  "description": "Official Appcharge agent skills for integrating with the Appcharge platform — payments, dashboards, APIs, and operations.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Appcharge"
+  },
+  "repository": "https://github.com/Appcharge/appcharge-skills",
+  "license": "MIT",
+  "keywords": ["appcharge", "payments", "monetization", "agent-skills"]
+}
