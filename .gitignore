@@ -1,0 +1,20 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+*.swp
+*.swo
+
+# Local skill installs (npx skills)
+.agents/
+.cursor/skills/
+skills-lock.json
+
+# Node (if used for validation scripts later)
+node_modules/
+
+# Secrets
+.env
+.env.*
