@@ -13,7 +13,7 @@ metadata:
 
 # Authenticate Player Callback
 
-Implement the [Authenticate Player Callback](https://docs.appcharge.com/api-reference/webstore/player-authentication/authenticate-player-callback).
+Implement the Authenticate Player callback. Official spec: https://docs.appcharge.com/api-reference/webstore/player-authentication/authenticate-player-callback.md
 
 ## When to Use
 
@@ -28,8 +28,8 @@ Implement the [Authenticate Player Callback](https://docs.appcharge.com/api-refe
 ## Workflow
 
 1. **Detect stack** — Go or Python; reuse existing auth/session services.
-2. **Read contract** — [references/api-contract.md](references/api-contract.md)
-3. **Secure ingress** — [secure communication](../../../docs/callbacks/secure-communication.md)
+2. **Fetch official docs** (required) — Run the `curl` commands in [references/api-contract.md](references/api-contract.md) and [secure communication](../../../docs/callbacks/secure-communication.md); implement from the fetched markdown only.
+3. **Secure ingress** — Per fetched secure-communication spec.
 4. **Add route** — `POST` e.g. `/callbacks/authenticate-player`
 5. **Branch on `authMethod`**
    - `google` / `facebook` / `apple`: validate `token` with IdP or your token store

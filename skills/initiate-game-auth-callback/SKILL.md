@@ -13,7 +13,7 @@ metadata:
 
 # Initiate Game Auth Callback
 
-Implement the [Initiate Game Auth Callback](https://docs.appcharge.com/api-reference/webstore/player-authentication/initiate-game-auth-callback).
+Implement the Initiate Game Auth callback. Official spec: https://docs.appcharge.com/api-reference/webstore/player-authentication/initiate-game-auth-callback.md
 
 **Scope:** Game Redirect Login only. Other login methods use `authenticate-player-callback` only.
 
@@ -31,8 +31,8 @@ Implement the [Initiate Game Auth Callback](https://docs.appcharge.com/api-refer
 
 1. **Confirm feature** — Game Redirect Login is enabled; otherwise stop and use authenticate-only flow.
 2. **Detect stack** — Go or Python.
-3. **Read contract** — [references/api-contract.md](references/api-contract.md)
-4. **Secure ingress** — [secure communication](../../../docs/callbacks/secure-communication.md)
+3. **Fetch official docs** (required) — Run the `curl` commands in [references/api-contract.md](references/api-contract.md) and [secure communication](../../../docs/callbacks/secure-communication.md); implement from the fetched markdown only.
+4. **Secure ingress** — Per fetched secure-communication spec.
 5. **Add route** — `POST` e.g. `/callbacks/initiate-game-auth`
 6. **Handler**
    - Parse `{ device, date }`

@@ -14,7 +14,7 @@ metadata:
 
 # Grant Award Callback
 
-Implement the [Grant Award Callback](https://docs.appcharge.com/api-reference/checkout/awards/grant-award-callback) on the publisher backend Appcharge calls after paid or free purchases.
+Implement the Grant Award callback on the publisher backend Appcharge calls after paid or free purchases. Official spec: https://docs.appcharge.com/api-reference/checkout/awards/grant-award-callback.md
 
 ## When to Use
 
@@ -29,8 +29,8 @@ Implement the [Grant Award Callback](https://docs.appcharge.com/api-reference/ch
 ## Workflow
 
 1. **Detect stack** — Prefer Go (`net/http`, Gin, Echo) or Python (FastAPI, Flask). Match existing routing, middleware, and config patterns.
-2. **Read contract** — [references/api-contract.md](references/api-contract.md)
-3. **Secure ingress** — Follow [secure communication](../../../docs/callbacks/secure-communication.md): raw body → verify `signature` → validate `x-publisher-token` → parse JSON.
+2. **Fetch official docs** (required) — Run the `curl` commands in [references/api-contract.md](references/api-contract.md) and [secure communication](../../../docs/callbacks/secure-communication.md); implement from the fetched markdown only.
+3. **Secure ingress** — Per fetched secure-communication spec: raw body → verify `signature` → validate `x-publisher-token` → parse JSON.
 4. **Add route** — `POST` only. Default path suggestion: `/callbacks/grant-award` (align with repo conventions if present).
 5. **Business logic** — Idempotent grant by `orderId` / `purchaseId`:
    - Resolve `playerId`, credit `products`, persist publisher-side purchase ID

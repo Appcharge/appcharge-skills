@@ -14,7 +14,7 @@ metadata:
 
 # Personalize Web Store Callback
 
-Implement the [Personalize Web Store Callback](https://docs.appcharge.com/api-reference/webstore/personalization/personalize-webstore-callback).
+Implement the Personalize Web Store callback. Official spec: https://docs.appcharge.com/api-reference/webstore/personalization/personalize-webstore-callback.md
 
 ## When to Use
 
@@ -28,8 +28,8 @@ Implement the [Personalize Web Store Callback](https://docs.appcharge.com/api-re
 ## Workflow
 
 1. **Detect stack** — Go or Python; match existing HTTP and catalog/segmentation modules.
-2. **Read contract** — [references/api-contract.md](references/api-contract.md) (full schema; implement fields incrementally).
-3. **Secure ingress** — [secure communication](../../../docs/callbacks/secure-communication.md).
+2. **Fetch official docs** (required) — Run the `curl` commands in [references/api-contract.md](references/api-contract.md) and [secure communication](../../../docs/callbacks/secure-communication.md); implement from the fetched markdown only.
+3. **Secure ingress** — Per fetched secure-communication spec.
 4. **Add route** — `POST` e.g. `/callbacks/personalize-webstore`.
 5. **Handler**
    - Input: `{ "playerId": "..." }`
@@ -38,21 +38,7 @@ Implement the [Personalize Web Store Callback](https://docs.appcharge.com/api-re
    - Populate `sessionMetadata` (passed through to Grant Award when enabled)
 6. **Performance** — Called on login, post-purchase, and periodic sync; avoid unbounded N+1; cache catalog slices where the project already does.
 7. **Tests** — Signature gate; valid player returns required fields; unknown player → `status: "invalid"` or documented error behavior.
-8. **Config** — Same env vars as other callbacks; register URL in Publisher Dashboard.
-
-## Minimal success shape
-
-```json
-{
-  "version": 2,
-  "status": "valid",
-  "sessionMetadata": {},
-  "balances": [],
-  "offers": []
-}
-```
-
-Extend with real `offers`, `segments`, `storeTheme`, etc. per product requirements.
+8. **Config** — Register callback URL and secrets in Publisher Dashboard per fetched docs.
 
 ## Related skills
 

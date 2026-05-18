@@ -40,14 +40,14 @@ After installing, **start a new agent session** so skills are picked up.
 
 ### Publisher callback endpoints (Go / Python)
 
-These skills guide an agent to add **Appcharge → publisher** HTTP callbacks in your backend: verify `x-publisher-token` and `signature`, implement the request/response contract, and wire tests. Shared signing rules: [docs/callbacks/secure-communication.md](docs/callbacks/secure-communication.md).
+These skills guide an agent to add **Appcharge → publisher** HTTP callbacks in a Go or Python backend. Each skill tells the agent to `curl` the official `.md` spec (request/response + signing) from [docs.appcharge.com](https://docs.appcharge.com/llms.txt) rather than duplicating contracts in this repo. Signing entry point: [docs/callbacks/secure-communication.md](docs/callbacks/secure-communication.md).
 
-| Skill | Endpoint | Docs |
-|-------|----------|------|
-| `grant-award-callback` | Fulfill purchases and free offers; return `publisherPurchaseId` | [Grant Award Callback](https://docs.appcharge.com/api-reference/checkout/awards/grant-award-callback) |
-| `personalize-webstore-callback` | Sync player store UI, offers, balances, segments | [Personalize Web Store Callback](https://docs.appcharge.com/api-reference/webstore/personalization/personalize-webstore-callback) |
-| `authenticate-player-callback` | Validate web store login (SSO, password, OTP) | [Authenticate Player Callback](https://docs.appcharge.com/api-reference/webstore/player-authentication/authenticate-player-callback) |
-| `initiate-game-auth-callback` | Start **Game Redirect Login** (`deepLink` + `accessToken`) | [Initiate Game Auth Callback](https://docs.appcharge.com/api-reference/webstore/player-authentication/initiate-game-auth-callback) |
+| Skill | Endpoint | Official spec (markdown) |
+|-------|----------|------------------------|
+| `grant-award-callback` | Fulfill purchases and free offers; return `publisherPurchaseId` | [grant-award-callback.md](https://docs.appcharge.com/api-reference/checkout/awards/grant-award-callback.md) |
+| `personalize-webstore-callback` | Sync player store UI, offers, balances, segments | [personalize-webstore-callback.md](https://docs.appcharge.com/api-reference/webstore/personalization/personalize-webstore-callback.md) |
+| `authenticate-player-callback` | Validate web store login (SSO, password, OTP) | [authenticate-player-callback.md](https://docs.appcharge.com/api-reference/webstore/player-authentication/authenticate-player-callback.md) |
+| `initiate-game-auth-callback` | Start **Game Redirect Login** (`deepLink` + `accessToken`) | [initiate-game-auth-callback.md](https://docs.appcharge.com/api-reference/webstore/player-authentication/initiate-game-auth-callback.md) |
 
 Install one callback skill:
 
