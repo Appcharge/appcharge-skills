@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "appcharge": {
+      "type": "http",
+      "url": "https://mcp.appcharge.com/mcp"
+    }
+  }
+}

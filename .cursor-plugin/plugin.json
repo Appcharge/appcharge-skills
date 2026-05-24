@@ -15,5 +15,6 @@
     "monetization",
     "agent-skills"
   ],
-  "skills": "./skills"
+  "skills": "./skills",
+  "mcp": "./.mcp.json"
 }
