@@ -7,5 +7,6 @@
   },
   "repository": "https://github.com/Appcharge/appcharge-skills",
   "license": "MIT",
-  "keywords": ["appcharge", "payments", "monetization", "agent-skills"]
+  "keywords": ["appcharge", "payments", "monetization", "agent-skills"],
+  "mcpServers": "./.mcp.json"
 }
