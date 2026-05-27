@@ -68,20 +68,7 @@ Override any default if the user explicitly provides a different value.
 
 ---
 
-## Phase 2 — Ask for media
-
-After parsing the description, ask exactly this (single message):
-
-> "Any media to attach? Drop an image or video here, or say **no** to skip."
-
-Wait for the response before proceeding.
-
--   If the user attaches a file: note the filename; include a reminder after creation (see Phase 5).
--   If the user says no: continue.
-
----
-
-## Phase 3 — Pre-flight summary
+## Phase 2 — Pre-flight summary
 
 Show the summary as a markdown table before creating anything.
 Do not create the ticket yet.
@@ -149,9 +136,9 @@ Use it as `reporter.id` in `additional_fields`.
 
 Use `contentFormat: "adf"` in `createJiraIssue`.
 
-The description is an ADF document. Each section label (`Image/Video of the issue:`,
-`Summary:`, `Steps to Reproduce:`, `Expected Result:`, `Actual Result:`, `Env:`) must
-have **both bold and underline** marks. Content follows on the next node or paragraph.
+The description is an ADF document. Each section label (`Summary:`, `Steps to Reproduce:`,
+`Expected Result:`, `Actual Result:`, `Env:`) must have an underline mark. Content follows
+on the next paragraph.
 
 ADF structure for labels — use `heading` level 4 with `underline` mark (matches existing Jira bugs in this project):
 
@@ -170,12 +157,6 @@ Full ADF template structure:
     "version": 1,
     "type": "doc",
     "content": [
-        {
-            "type": "heading",
-            "attrs": { "level": 4 },
-            "content": [{ "type": "text", "text": "Image/Video of the issue:", "marks": [{ "type": "underline" }] }]
-        },
-        { "type": "paragraph", "content": [{ "type": "text", "text": " " }] },
         {
             "type": "heading",
             "attrs": { "level": 4 },
@@ -252,8 +233,7 @@ After successful creation, respond with:
 
 1. The Jira ticket URL: `https://appcharge.atlassian.net/browse/<ISSUE-KEY>`
 2. If the team was defaulted to QA: _"Note: team was set to QA by default — reassign to the correct team in Jira."_
-3. If media was provided: _"Note: please attach [filename] directly in the Jira ticket — file upload via this flow is not supported yet."_
-4. _"You can now add a parent ticket, additional context, or any missing fields directly in Jira."_
+3. Always: _"If you have any media (image or video), you can attach it directly in the Jira ticket. You can also add a parent ticket or any additional context there."_
 
 ---
 
