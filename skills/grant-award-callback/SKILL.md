@@ -1,15 +1,12 @@
 ---
 name: grant-award-callback
 description: >-
-  Implements the Appcharge Grant Award callback endpoint in a Go or Python
-  publisher server. Verifies x-publisher-token and signature, parses the order
-  payload, grants inventory, and returns publisherPurchaseId. Use when adding
-  grant award webhook, fulfillment callback, purchase completion handler, or
-  docs.appcharge.com grant-award-callback integration.
+  Implement Appcharge Grant Award callback — post-purchase fulfillment,
+  publisherPurchaseId.
 metadata:
   author: Appcharge
-  version: 0.1.0
-  tags: [appcharge, callback, checkout, awards, golang, python]
+  version: 0.2.0
+  tags: [appcharge, callback, checkout, awards]
 ---
 
 # Grant Award Callback
@@ -18,7 +15,7 @@ Implement the Grant Award callback on the publisher backend Appcharge calls afte
 
 ## When to Use
 
-- New integration or missing grant-award handler in a Go/Python service
+- New integration or missing grant-award handler in the publisher backend
 - User mentions grant award, fulfillment callback, `publisherPurchaseId`, or post-purchase webhook
 
 ## When NOT to Use
@@ -28,20 +25,63 @@ Implement the Grant Award callback on the publisher backend Appcharge calls afte
 
 ## Workflow
 
-1. **Detect stack** — Prefer Go (`net/http`, Gin, Echo) or Python (FastAPI, Flask). Match existing routing, middleware, and config patterns.
-2. **Fetch official docs** (required) — Run the `curl` commands in [references/api-contract.md](references/api-contract.md) and [secure communication](../../../docs/callbacks/secure-communication.md); implement from the fetched markdown only.
-3. **Secure ingress** — Per fetched secure-communication spec: raw body → verify `signature` → validate `x-publisher-token` → parse JSON.
-4. **Add route** — `POST` only. Default path suggestion: `/callbacks/grant-award` (align with repo conventions if present).
-5. **Business logic** — Idempotent grant by `orderId` / `purchaseId`:
+Complete **Phase 1 (Research)** before writing any implementation code.
+
+### Phase 1 — Research (required)
+
+#### 1.1 Project structure and conventions
+
+- Detect language, framework, package manager, and HTTP server.
+- Map project layout: routes/controllers, middleware, services, inventory/wallet modules, config.
+- Note naming conventions for handlers, routes, env vars, and error responses.
+- Identify dependencies for HTTP, JSON, crypto, and idempotent persistence.
+
+#### 1.2 Existing Appcharge integration
+
+Search the codebase for Appcharge-related code before adding anything new:
+
+- Other callback handlers (authenticate-player, personalize, initiate-game-auth)
+- Signature verification, `x-publisher-token` validation, main-key config
+- Shared middleware, utils, or services for Appcharge callbacks
+- Env vars or config for publisher token, main key, and registered callback URLs
+
+**Reuse** existing helpers; do not duplicate verification or config loading.
+
+#### 1.3 Test conventions
+
+- Find the test framework, test file locations, and how HTTP handlers are exercised.
+- Locate existing callback, webhook, or fulfillment tests as templates.
+- Note how valid/invalid signatures and error responses are asserted.
+
+#### 1.4 Fetch official docs (required)
+
+Run the `curl` commands in skill-local references only (these ship with the skill when installed via `npx skills add`; repo-root `docs/` is not available in client projects):
+
+- [references/api-contract.md](references/api-contract.md) — endpoint request/response contract
+- [references/secure-communication.md](references/secure-communication.md) — signature and token verification
+
+Implement from the **fetched markdown only**.
+
+### Phase 2 — Implementation
+
+Apply findings from Phase 1 throughout:
+
+1. **Secure ingress** — Per fetched secure-communication spec: raw body → verify `signature` → validate `x-publisher-token` → parse JSON. Use existing Appcharge middleware if present.
+2. **Add route** — `POST` only; align path with repo conventions (default suggestion: `/callbacks/grant-award`).
+3. **Business logic** — Idempotent grant by `orderId` / `purchaseId`; delegate to existing inventory/wallet services:
    - Resolve `playerId`, credit `products`, persist publisher-side purchase ID
    - Handle `action` `purchase` vs `bonus`; respect `awardFlow` `manual_retry` if applicable
    - Parse `sessionMetadata` if the game stores JSON there
-6. **Respond**
+4. **Respond**
    - Success: `200` + `{ "publisherPurchaseId": "<your-transaction-id>" }`
    - Client errors (unknown player, invalid SKU): `400` + `publisherErrorMessage`
    - Transient failures: `500` + `publisherErrorMessage`
-7. **Tests** — Unit-test signature verification and handler: valid signature + happy path; invalid signature → `401`/`403`; missing `publisherPurchaseId` on success path forbidden.
-8. **Wire config** — Document `APPCHARGE_PUBLISHER_TOKEN`, `APPCHARGE_MAIN_KEY`, and the public callback URL for the Publisher Dashboard.
+5. **Tests** — Add unit tests using project conventions from §1.3:
+   - Valid signature + happy path returns `publisherPurchaseId`
+   - Invalid signature → documented `401`/`403`
+   - Idempotent re-delivery of same order
+   - Missing `publisherPurchaseId` on success path forbidden
+6. **Wire config** — Document callback URL and secrets using the project's config/env naming; align with Publisher Dashboard.
 
 ## Handler sketch
 

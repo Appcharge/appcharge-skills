@@ -38,9 +38,9 @@ After installing, **start a new agent session** so skills are picked up.
 
 ## Available skills
 
-### Publisher callback endpoints (Go / Python)
+### Publisher callback endpoints
 
-These skills guide an agent to add **Appcharge → publisher** HTTP callbacks in a Go or Python backend. Each skill tells the agent to `curl` the official `.md` spec (request/response + signing) from [docs.appcharge.com](https://docs.appcharge.com/llms.txt) rather than duplicating contracts in this repo. Signing entry point: [docs/callbacks/secure-communication.md](docs/callbacks/secure-communication.md).
+These skills guide an agent to add **Appcharge → publisher** HTTP callbacks in any publisher backend (Go, Python, Node, Java, C#, Ruby, PHP, etc.). Each skill includes a **research phase** (project layout, test conventions, existing Appcharge code) before implementation. Official API contracts are fetched at runtime via `curl` from [docs.appcharge.com](https://docs.appcharge.com/llms.txt); each skill ships `references/api-contract.md` and `references/secure-communication.md` so `npx skills add` installs everything needed (repo-root `docs/` is not copied to client projects).
 
 | Skill | Endpoint | Official spec (markdown) |
 |-------|----------|------------------------|
@@ -137,12 +137,12 @@ Plugin skills are namespaced: `/appcharge-skills:<skill-name>`.
 
 ```text
 appcharge-skills/
-├── docs/callbacks/              # Shared signature verification notes
+├── docs/callbacks/              # Source for secure-communication (also copied per skill)
 └── skills/
     └── <skill-name>/
         ├── SKILL.md             # Required
+        ├── references/          # api-contract.md + secure-communication.md (installed with skill)
         ├── scripts/             # Optional
-        ├── references/          # Optional
         └── assets/              # Optional
 ```
 

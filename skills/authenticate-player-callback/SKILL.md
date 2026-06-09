@@ -1,14 +1,12 @@
 ---
 name: authenticate-player-callback
 description: >-
-  Implements the Appcharge Authenticate Player callback in Go or Python.
-  Verifies signature and publisher token, validates SSO/OTP/password logins,
-  returns publisherPlayerId, playerName, and sessionMetadata. Use for web
-  store login callback, player authentication endpoint, or authenticate-player-callback docs.
+  Implement Appcharge Authenticate Player callback — web store login,
+  SSO/OTP/password, publisherPlayerId.
 metadata:
   author: Appcharge
-  version: 0.1.0
-  tags: [appcharge, callback, webstore, authentication, golang, python]
+  version: 0.2.0
+  tags: [appcharge, callback, webstore, authentication]
 ---
 
 # Authenticate Player Callback
@@ -27,19 +25,63 @@ Implement the Authenticate Player callback. Official spec: https://docs.appcharg
 
 ## Workflow
 
-1. **Detect stack** — Go or Python; reuse existing auth/session services.
-2. **Fetch official docs** (required) — Run the `curl` commands in [references/api-contract.md](references/api-contract.md) and [secure communication](../../../docs/callbacks/secure-communication.md); implement from the fetched markdown only.
-3. **Secure ingress** — Per fetched secure-communication spec.
-4. **Add route** — `POST` e.g. `/callbacks/authenticate-player`
-5. **Branch on `authMethod`**
+Complete **Phase 1 (Research)** before writing any implementation code.
+
+### Phase 1 — Research (required)
+
+#### 1.1 Project structure and conventions
+
+- Detect language, framework, package manager, and HTTP server (e.g. Go/Gin, Python/FastAPI, Node/NestJS, Java/Spring, C#/ASP.NET, Ruby/Rails, PHP/Laravel).
+- Map project layout: where routes/controllers, middleware, services, DTOs, and config live.
+- Note naming conventions for handlers, routes, env vars, and error responses.
+- Identify dependencies already used for HTTP, JSON parsing, crypto, and auth.
+
+#### 1.2 Existing Appcharge integration
+
+Search the codebase for Appcharge-related code before adding anything new:
+
+- Other callback handlers (grant-award, personalize, initiate-game-auth)
+- Signature verification, `x-publisher-token` validation, main-key config
+- Shared middleware, utils, or services under names like `appcharge`, `publisher`, `callback`, `webstore`
+- Env vars or config keys for `APPCHARGE_PUBLISHER_TOKEN`, `APPCHARGE_MAIN_KEY`, callback URLs
+
+**Reuse** existing helpers and patterns; do not duplicate verification or config loading.
+
+#### 1.3 Test conventions
+
+- Find the test framework and runner (e.g. `go test`, `pytest`, `jest`, `vitest`, `JUnit`, `xUnit`).
+- Locate where unit vs integration tests live and how HTTP handlers are tested (mocks, test clients, fixtures).
+- Find existing callback or webhook tests to mirror structure and assertion style.
+- Note how signatures, headers, and auth failures are tested in this repo.
+
+#### 1.4 Fetch official docs (required)
+
+Run the `curl` commands in skill-local references only (these ship with the skill when installed via `npx skills add`; repo-root `docs/` is not available in client projects):
+
+- [references/api-contract.md](references/api-contract.md) — endpoint request/response contract
+- [references/secure-communication.md](references/secure-communication.md) — signature and token verification
+
+Implement from the **fetched markdown only**; do not rely on cached or assumed API shapes.
+
+### Phase 2 — Implementation
+
+Apply findings from Phase 1 throughout:
+
+1. **Secure ingress** — Per fetched secure-communication spec; plug into existing Appcharge middleware/utils if present.
+2. **Add route** — `POST`; align path with repo conventions (default suggestion: `/callbacks/authenticate-player`).
+3. **Branch on `authMethod`** (delegate to existing auth/session services):
    - `google` / `facebook` / `apple`: validate `token` with IdP or your token store
    - `userToken`: map token → player
    - `userPassword`: verify `userName` + `password`
    - `otp`: verify `otp.playerCode` + `otp.accessToken` (after Game Redirect flow)
-6. **Success response** — `200`, `status: "valid"`, `publisherPlayerId`, `playerName`, `playerProfileImage` (empty string if none), optional `sessionMetadata`, optional `playerOverrideCountry`
-7. **Failure response** — Non-valid `status` with `publisherErrorMessageType`, `publisherErrorMessage`, `publisherErrorMessageTitle` per docs
-8. **Tests** — Per `authMethod` happy path; bad credentials; invalid signature
-9. **Dashboard** — Register callback URL; ensure token/main key env vars are set
+4. **Success response** — `200`, `status: "valid"`, `publisherPlayerId`, `playerName`, `playerProfileImage` (empty string if none), optional `sessionMetadata`, optional `playerOverrideCountry`
+5. **Failure response** — Non-valid `status` with `publisherErrorMessageType`, `publisherErrorMessage`, `publisherErrorMessageTitle` per fetched docs
+6. **Tests** — Add unit tests using the project's test framework and patterns from §1.3:
+   - Happy path per relevant `authMethod`
+   - Bad credentials / unknown player
+   - Invalid or missing signature → documented status code
+   - Reuse existing test helpers for signing mock requests if available
+7. **Dashboard** — Register callback URL; ensure token/main key env vars match project config conventions
 
 ## Related skills
 

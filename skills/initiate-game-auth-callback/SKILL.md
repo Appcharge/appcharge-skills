@@ -1,14 +1,12 @@
 ---
 name: initiate-game-auth-callback
 description: >-
-  Implements the Appcharge Initiate Game Auth callback for Game Redirect Login
-  in Go or Python. Returns deepLink and accessToken after signature verification.
-  Use only for game redirect login, initiate game authentication, or
-  initiate-game-auth-callback docs — not for SSO or password login.
+  Implement Appcharge Initiate Game Auth callback — Game Redirect Login only,
+  deepLink and accessToken.
 metadata:
   author: Appcharge
-  version: 0.1.0
-  tags: [appcharge, callback, webstore, authentication, game-redirect, golang, python]
+  version: 0.2.0
+  tags: [appcharge, callback, webstore, authentication, game-redirect]
 ---
 
 # Initiate Game Auth Callback
@@ -29,18 +27,60 @@ Implement the Initiate Game Auth callback. Official spec: https://docs.appcharge
 
 ## Workflow
 
+Complete **Phase 1 (Research)** before writing any implementation code.
+
+### Phase 1 — Research (required)
+
+#### 1.1 Project structure and conventions
+
+- Detect language, framework, package manager, and HTTP server.
+- Map project layout: routes/controllers, auth/session modules, deep-link or token utilities, config.
+- Note naming conventions for handlers, routes, token storage, and env vars.
+- Identify dependencies for HTTP, JSON, crypto, and short-lived token/session storage.
+
+#### 1.2 Existing Appcharge integration
+
+Search the codebase for Appcharge-related code before adding anything new:
+
+- `authenticate-player-callback` handler and shared Appcharge middleware/utils (OTP flow must share `accessToken` storage)
+- Signature verification, publisher token, main-key config
+- Existing deep-link builders or pending-auth session stores
+- Env vars or config for callback URLs and secrets
+
+**Reuse** existing helpers; wire `accessToken` persistence so `authenticate-player-callback` can validate `otp.accessToken`.
+
+#### 1.3 Test conventions
+
+- Find the test framework and how HTTP handlers and session/token stores are tested.
+- Locate existing callback or auth tests as templates.
+- Note how mock signed requests and error status codes are asserted.
+
+#### 1.4 Fetch official docs (required)
+
+Run the `curl` commands in skill-local references only (these ship with the skill when installed via `npx skills add`; repo-root `docs/` is not available in client projects):
+
+- [references/api-contract.md](references/api-contract.md) — endpoint request/response contract
+- [references/secure-communication.md](references/secure-communication.md) — signature and token verification
+
+Implement from the **fetched markdown only**.
+
+### Phase 2 — Implementation
+
+Apply findings from Phase 1 throughout:
+
 1. **Confirm feature** — Game Redirect Login is enabled; otherwise stop and use authenticate-only flow.
-2. **Detect stack** — Go or Python.
-3. **Fetch official docs** (required) — Run the `curl` commands in [references/api-contract.md](references/api-contract.md) and [secure communication](../../../docs/callbacks/secure-communication.md); implement from the fetched markdown only.
-4. **Secure ingress** — Per fetched secure-communication spec.
-5. **Add route** — `POST` e.g. `/callbacks/initiate-game-auth`
-6. **Handler**
+2. **Secure ingress** — Per fetched secure-communication spec; use existing Appcharge middleware if present.
+3. **Add route** — `POST`; align path with repo conventions (default suggestion: `/callbacks/initiate-game-auth`).
+4. **Handler**
    - Parse `{ device, date }`
    - Create short-lived `accessToken` and game `deepLink` (include token/key query params per your game's convention)
-   - Persist pending auth session keyed by `accessToken` for later OTP validation
-7. **Respond** — `200` + `{ "deepLink", "accessToken" }`; map verification failures to 400/401/403 with `{ "error": "..." }` per docs
-8. **Tests** — Valid signature + 200 body; invalid signature → 400; missing fields → 403
-9. **Chain** — Document that `accessToken` must match `otp.accessToken` in authenticate-player callback
+   - Persist pending auth session keyed by `accessToken` using the project's existing session/token store
+5. **Respond** — `200` + `{ "deepLink", "accessToken" }`; map verification failures to 400/401/403 with `{ "error": "..." }` per fetched docs
+6. **Tests** — Add unit tests using project conventions from §1.3:
+   - Valid signature + 200 body with `deepLink` and `accessToken`
+   - Invalid signature → documented 400/401/403
+   - Missing required fields → documented error
+7. **Chain** — Document that `accessToken` must match `otp.accessToken` in `authenticate-player-callback`
 
 ## Flow
 
