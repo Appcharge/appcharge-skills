@@ -27,60 +27,91 @@ Implement the Initiate Game Auth callback. Official spec: https://docs.appcharge
 
 ## Workflow
 
-Complete **Phase 1 (Research)** before writing any implementation code.
+Complete **Phase 0** and **Phase 1** before writing any implementation code.
+
+### Phase 0 — Confirm with user (required)
+
+Ask the user explicitly. If research already suggests an answer, propose it and ask to confirm or override. **Do not implement until answered.**
+
+**Routing and secrets (all callbacks)**
+
+1. Which **route path** should host this webhook? (suggestion: `/callbacks/initiate-game-auth`)
+2. Which **file** registers HTTP routes for this service?
+3. Which **env var or config key** stores the Appcharge **main key** (webhook signature signing secret)?
+4. Which **env var or config key** stores the **publisher token** (`x-publisher-token`)?
+
+**Domain mapping (this callback)**
+
+5. Where should pending **`accessToken`** sessions be stored so `authenticate-player-callback` can validate `otp.accessToken`?
+6. How is the game **`deepLink`** URL built (base URL, query params, device-specific paths)?
+7. Should **`desktopAutoRedirect`** be `true` or `false` for desktop players?
 
 ### Phase 1 — Research (required)
 
 #### 1.1 Project structure and conventions
 
-- Detect language, framework, package manager, and HTTP server.
-- Map project layout: routes/controllers, auth/session modules, deep-link or token utilities, config.
-- Note naming conventions for handlers, routes, token storage, and env vars.
-- Identify dependencies for HTTP, JSON, crypto, and short-lived token/session storage.
+- Detect language, framework, auth/session modules, deep-link utilities, config.
 
 #### 1.2 Existing Appcharge integration
 
-Search the codebase for Appcharge-related code before adding anything new:
-
-- `authenticate-player-callback` handler and shared Appcharge middleware/utils (OTP flow must share `accessToken` storage)
-- Signature verification, publisher token, main-key config
-- Existing deep-link builders or pending-auth session stores
-- Env vars or config for callback URLs and secrets
-
-**Reuse** existing helpers; wire `accessToken` persistence so `authenticate-player-callback` can validate `otp.accessToken`.
+Search for authenticate callback, shared middleware, token/session stores. **Reuse** and ensure OTP flow shares `accessToken` storage.
 
 #### 1.3 Test conventions
 
-- Find the test framework and how HTTP handlers and session/token stores are tested.
-- Locate existing callback or auth tests as templates.
-- Note how mock signed requests and error status codes are asserted.
+- Find test framework, handler test patterns, existing auth/callback tests.
 
 #### 1.4 Fetch official docs (required)
 
-Run the `curl` commands in skill-local references only (these ship with the skill when installed via `npx skills add`; repo-root `docs/` is not available in client projects):
+Run `curl` from skill-local references (shipped with `npx skills add`):
 
-- [references/api-contract.md](references/api-contract.md) — endpoint request/response contract
-- [references/secure-communication.md](references/secure-communication.md) — signature and token verification
+- [references/api-contract.md](references/api-contract.md)
+- [references/secure-communication.md](references/secure-communication.md)
 
 Implement from the **fetched markdown only**.
 
 ### Phase 2 — Implementation
 
-Apply findings from Phase 1 throughout:
+Use Phase 0 answers and Phase 1 findings throughout.
 
-1. **Confirm feature** — Game Redirect Login is enabled; otherwise stop and use authenticate-only flow.
-2. **Secure ingress** — Per fetched secure-communication spec; use existing Appcharge middleware if present.
-3. **Add route** — `POST`; align path with repo conventions (default suggestion: `/callbacks/initiate-game-auth`).
-4. **Handler**
-   - Parse `{ device, date }`
-   - Create short-lived `accessToken` and game `deepLink` (include token/key query params per your game's convention)
-   - Persist pending auth session keyed by `accessToken` using the project's existing session/token store
-5. **Respond** — `200` + `{ "deepLink", "accessToken" }`; map verification failures to 400/401/403 with `{ "error": "..." }` per fetched docs
-6. **Tests** — Add unit tests using project conventions from §1.3:
-   - Valid signature + 200 body with `deepLink` and `accessToken`
-   - Invalid signature → documented 400/401/403
-   - Missing required fields → documented error
-7. **Chain** — Document that `accessToken` must match `otp.accessToken` in `authenticate-player-callback`
+**Confirm feature** — Game Redirect Login is enabled; otherwise stop.
+
+#### Signature verification
+
+Follow [references/secure-communication.md](references/secure-communication.md):
+
+1. Register route as `POST` at the user-confirmed path in the user-confirmed router file.
+2. Read **raw body** before JSON parsing.
+3. Verify `signature` (HMAC-SHA256, `t=<ms>.<rawBody>`, ~5 min replay window) using the user-confirmed main-key env var.
+4. Validate `x-publisher-token` against the user-confirmed publisher-token env var.
+
+#### Payload handling
+
+After verification, parse `{ "device", "date" }`:
+
+| Step | Action |
+|------|--------|
+| Validate input | `device` is `DESKTOP` or `APPCHARGE`; `date` is ISO 8601 |
+| Create `accessToken` | Generate short-lived token; persist in Phase 0 Q5 store |
+| Build `deepLink` | Use Phase 0 Q6 URL builder; embed token/key params |
+| Respond | `200` + `{ "deepLink", "accessToken", "desktopAutoRedirect" }` per Phase 0 Q7 |
+
+Error mapping per fetched docs:
+
+- Invalid signature → `400` + `{ "error": "Invalid signature" }`
+- Bad publisher token → `401` + `{ "error": "Unauthorized" }`
+- Missing/invalid fields → `403` + `{ "error": "Parameters not correct" }`
+
+**Chain** — `accessToken` here must match `otp.accessToken` in `authenticate-player-callback`.
+
+#### Tests
+
+- Valid signature → `200` with `deepLink` and `accessToken`
+- Invalid signature → `400`
+- Missing fields → `403`
+
+#### Dashboard
+
+Register full callback URL; align env vars with Dashboard → Integration.
 
 ## Flow
 

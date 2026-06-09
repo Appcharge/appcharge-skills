@@ -24,60 +24,92 @@ Implement the Personalize Web Store callback. Official spec: https://docs.appcha
 
 ## Workflow
 
-Complete **Phase 1 (Research)** before writing any implementation code.
+Complete **Phase 0** and **Phase 1** before writing any implementation code.
+
+### Phase 0 — Confirm with user (required)
+
+Ask the user explicitly. If research already suggests an answer, propose it and ask to confirm or override. **Do not implement until answered.**
+
+**Routing and secrets (all callbacks)**
+
+1. Which **route path** should host this webhook? (suggestion: `/callbacks/personalize-webstore`)
+2. Which **file** registers HTTP routes for this service?
+3. Which **env var or config key** stores the Appcharge **main key** (webhook signature signing secret)?
+4. Which **env var or config key** stores the **publisher token** (`x-publisher-token`)?
+
+**Domain mapping (this callback)**
+
+5. Which **model and field** does incoming `playerId` map to? (Same ID returned as `publisherPlayerId` from authenticate.)
+6. Which **services or queries** load player **balances** (`publisherProductId` + `quantity`)?
+7. Which **services or queries** load eligible **offers** (`publisherOfferId`, `productsSequence`)?
+8. Where do **segments**, **attributes**, and **storeTheme** asset IDs come from?
 
 ### Phase 1 — Research (required)
 
 #### 1.1 Project structure and conventions
 
-- Detect language, framework, package manager, and HTTP server.
-- Map project layout: routes/controllers, catalog/segmentation modules, caching layers, config.
-- Note naming conventions for handlers, routes, DTOs, and env vars.
-- Identify dependencies for HTTP, JSON, and any existing personalization or catalog services.
+- Detect language, framework, catalog/segmentation modules, caching, config.
 
 #### 1.2 Existing Appcharge integration
 
-Search the codebase for Appcharge-related code before adding anything new:
-
-- Other callback handlers and shared Appcharge middleware/utils
-- Signature verification, publisher token, main-key config
-- Existing personalization, segment, or catalog code the handler should call
-- Env vars or config for callback URLs and secrets
-
-**Reuse** existing helpers and domain services; do not duplicate verification or catalog logic.
+Search for other callbacks, signature verification, personalization/catalog code. **Reuse** before adding new code.
 
 #### 1.3 Test conventions
 
-- Find the test framework and how HTTP handlers and service mocks are structured.
-- Locate existing callback or catalog tests as templates.
-- Note how signature failures and response shape assertions are done.
+- Find test framework, handler test patterns, existing callback/catalog tests.
 
 #### 1.4 Fetch official docs (required)
 
-Run the `curl` commands in skill-local references only (these ship with the skill when installed via `npx skills add`; repo-root `docs/` is not available in client projects):
+Run `curl` from skill-local references (shipped with `npx skills add`):
 
-- [references/api-contract.md](references/api-contract.md) — endpoint request/response contract
-- [references/secure-communication.md](references/secure-communication.md) — signature and token verification
+- [references/api-contract.md](references/api-contract.md)
+- [references/secure-communication.md](references/secure-communication.md)
 
 Implement from the **fetched markdown only**.
 
 ### Phase 2 — Implementation
 
-Apply findings from Phase 1 throughout:
+Use Phase 0 answers and Phase 1 findings throughout.
 
-1. **Secure ingress** — Per fetched secure-communication spec; use existing Appcharge middleware if present.
-2. **Add route** — `POST`; align path with repo conventions (default suggestion: `/callbacks/personalize-webstore`).
-3. **Handler** — Delegate to existing catalog/segmentation services:
-   - Input: `{ "playerId": "..." }`
-   - Load player profile, wallets (`balances`), eligible offers (`offers` + `productsSequence`), segments, A/B `attributes`, theme asset IDs
-   - Set `version: 2`, `status: "valid"` when the player exists; `"invalid"` when not
-   - Populate `sessionMetadata` (passed through to Grant Award when enabled)
-4. **Performance** — Called on login, post-purchase, and periodic sync; avoid unbounded N+1; cache catalog slices where the project already does.
-5. **Tests** — Add unit tests using project conventions from §1.3:
-   - Signature gate (valid vs invalid)
-   - Valid player returns required fields per fetched docs
-   - Unknown player → `status: "invalid"` or documented error behavior
-6. **Config** — Register callback URL and secrets in Publisher Dashboard using project config naming.
+#### Signature verification
+
+Follow [references/secure-communication.md](references/secure-communication.md):
+
+1. Register route as `POST` at the user-confirmed path in the user-confirmed router file.
+2. Read **raw body** before JSON parsing.
+3. Verify `signature` (HMAC-SHA256, `t=<ms>.<rawBody>`, ~5 min replay window) using the user-confirmed main-key env var.
+4. Validate `x-publisher-token` against the user-confirmed publisher-token env var.
+
+#### Payload handling
+
+After verification, parse request `{ "playerId": "..." }`:
+
+| Step | Action |
+|------|--------|
+| Resolve player | Look up by Phase 0 Q5 mapping; if missing → `status: "invalid"` |
+| Load balances | Map wallet/inventory to `balances[]` via Phase 0 Q6 |
+| Load offers | Map catalog to `offers[]` + `productsSequence` via Phase 0 Q7 |
+| Segments & attributes | Populate from Phase 0 Q8 sources |
+| Theme | Map asset IDs to `storeTheme` fields |
+| Session passthrough | Set `sessionMetadata` for Grant Award when enabled |
+
+Response shape (version 2):
+
+- `version: 2`
+- `status: "valid"` when player exists; `"invalid"` when not
+- Required fields per fetched docs: `balances`, `offers`, `segments`, etc.
+
+**Performance** — Called on login, post-purchase, and every ~5 minutes; avoid N+1; reuse existing caches.
+
+#### Tests
+
+- Valid vs invalid signature
+- Known player → `status: "valid"` with required fields
+- Unknown `playerId` → `status: "invalid"`
+
+#### Dashboard
+
+Register full callback URL; align env vars with Dashboard → Integration.
 
 ## Related skills
 

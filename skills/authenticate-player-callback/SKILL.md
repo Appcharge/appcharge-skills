@@ -25,63 +25,99 @@ Implement the Authenticate Player callback. Official spec: https://docs.appcharg
 
 ## Workflow
 
-Complete **Phase 1 (Research)** before writing any implementation code.
+Complete **Phase 0** and **Phase 1** before writing any implementation code.
+
+### Phase 0 — Confirm with user (required)
+
+Ask the user explicitly. If research already suggests an answer, propose it and ask to confirm or override. **Do not implement until answered.**
+
+**Routing and secrets (all callbacks)**
+
+1. Which **route path** should host this webhook? (suggestion: `/callbacks/authenticate-player`)
+2. Which **file** registers HTTP routes for this service?
+3. Which **env var or config key** stores the Appcharge **main key** (webhook signature signing secret)?
+4. Which **env var or config key** stores the **publisher token** (`x-publisher-token`)?
+
+**Domain mapping (this callback)**
+
+5. Which **model and field** hold the player's stable ID returned as `publisherPlayerId`?
+6. Which **model and field** hold the display name returned as `playerName`?
+7. Which **auth service or function** validates each `authMethod` the project supports (`google`/`facebook`/`apple`, `userToken`, `userPassword`, `otp`)?
 
 ### Phase 1 — Research (required)
 
 #### 1.1 Project structure and conventions
 
-- Detect language, framework, package manager, and HTTP server (e.g. Go/Gin, Python/FastAPI, Node/NestJS, Java/Spring, C#/ASP.NET, Ruby/Rails, PHP/Laravel).
-- Map project layout: where routes/controllers, middleware, services, DTOs, and config live.
+- Detect language, framework, package manager, and HTTP server.
+- Map project layout: routes/controllers, middleware, services, DTOs, config.
 - Note naming conventions for handlers, routes, env vars, and error responses.
-- Identify dependencies already used for HTTP, JSON parsing, crypto, and auth.
 
 #### 1.2 Existing Appcharge integration
 
-Search the codebase for Appcharge-related code before adding anything new:
-
-- Other callback handlers (grant-award, personalize, initiate-game-auth)
-- Signature verification, `x-publisher-token` validation, main-key config
-- Shared middleware, utils, or services under names like `appcharge`, `publisher`, `callback`, `webstore`
-- Env vars or config keys for `APPCHARGE_PUBLISHER_TOKEN`, `APPCHARGE_MAIN_KEY`, callback URLs
-
-**Reuse** existing helpers and patterns; do not duplicate verification or config loading.
+Search for other callbacks, signature verification, shared middleware/utils, and configured secrets. **Reuse** before adding new code.
 
 #### 1.3 Test conventions
 
-- Find the test framework and runner (e.g. `go test`, `pytest`, `jest`, `vitest`, `JUnit`, `xUnit`).
-- Locate where unit vs integration tests live and how HTTP handlers are tested (mocks, test clients, fixtures).
-- Find existing callback or webhook tests to mirror structure and assertion style.
-- Note how signatures, headers, and auth failures are tested in this repo.
+- Find test framework, handler test patterns, and existing webhook/signature tests.
 
 #### 1.4 Fetch official docs (required)
 
-Run the `curl` commands in skill-local references only (these ship with the skill when installed via `npx skills add`; repo-root `docs/` is not available in client projects):
+Run `curl` from skill-local references (shipped with `npx skills add`):
 
-- [references/api-contract.md](references/api-contract.md) — endpoint request/response contract
-- [references/secure-communication.md](references/secure-communication.md) — signature and token verification
+- [references/api-contract.md](references/api-contract.md)
+- [references/secure-communication.md](references/secure-communication.md)
 
-Implement from the **fetched markdown only**; do not rely on cached or assumed API shapes.
+Implement from the **fetched markdown only**.
 
 ### Phase 2 — Implementation
 
-Apply findings from Phase 1 throughout:
+Use Phase 0 answers and Phase 1 findings throughout.
 
-1. **Secure ingress** — Per fetched secure-communication spec; plug into existing Appcharge middleware/utils if present.
-2. **Add route** — `POST`; align path with repo conventions (default suggestion: `/callbacks/authenticate-player`).
-3. **Branch on `authMethod`** (delegate to existing auth/session services):
-   - `google` / `facebook` / `apple`: validate `token` with IdP or your token store
-   - `userToken`: map token → player
-   - `userPassword`: verify `userName` + `password`
-   - `otp`: verify `otp.playerCode` + `otp.accessToken` (after Game Redirect flow)
-4. **Success response** — `200`, `status: "valid"`, `publisherPlayerId`, `playerName`, `playerProfileImage` (empty string if none), optional `sessionMetadata`, optional `playerOverrideCountry`
-5. **Failure response** — Non-valid `status` with `publisherErrorMessageType`, `publisherErrorMessage`, `publisherErrorMessageTitle` per fetched docs
-6. **Tests** — Add unit tests using the project's test framework and patterns from §1.3:
-   - Happy path per relevant `authMethod`
-   - Bad credentials / unknown player
-   - Invalid or missing signature → documented status code
-   - Reuse existing test helpers for signing mock requests if available
-7. **Dashboard** — Register callback URL; ensure token/main key env vars match project config conventions
+#### Signature verification
+
+Follow [references/secure-communication.md](references/secure-communication.md):
+
+1. Register route as `POST` at the user-confirmed path in the user-confirmed router file.
+2. Ensure middleware reads **raw body** before JSON parsing.
+3. Verify `signature` (HMAC-SHA256, `t=<ms>.<rawBody>`, ~5 min replay window) using the user-confirmed main-key env var.
+4. Validate `x-publisher-token` against the user-confirmed publisher-token env var.
+5. Reject unsigned/invalid requests before handler logic.
+
+#### Payload handling
+
+After verification, parse the request body and branch on `authMethod`:
+
+| `authMethod` | Request fields | Handler action |
+|--------------|----------------|----------------|
+| `google` / `facebook` / `apple` | `token`, `appId`, `date` | Validate SSO token via auth service from Phase 0 Q7 |
+| `userToken` | `token` | Map token → player |
+| `userPassword` | `userName`, `password` | Verify credentials |
+| `otp` | `otp.playerCode`, `otp.accessToken` | Validate against pending session from `initiate-game-auth-callback` |
+
+Map the authenticated player to response fields using Phase 0 Q5–Q6:
+
+- `publisherPlayerId` ← user's model/field for stable player ID
+- `playerName` ← user's model/field for display name
+- `playerProfileImage` ← profile image URL or `""`
+- `sessionMetadata` ← optional object passed through to Grant Award
+- `playerOverrideCountry` ← optional ISO country override
+
+**Success** — `200`, `status: "valid"`, required fields above.
+
+**Failure** — non-valid `status` with `publisherErrorMessageType`, `publisherErrorMessage`, `publisherErrorMessageTitle` per fetched docs.
+
+#### Tests
+
+Using project test conventions:
+
+- Valid signature + happy path per supported `authMethod`
+- Bad credentials
+- Invalid/missing signature
+- Mock signed requests using the confirmed main key
+
+#### Dashboard
+
+Register the full callback URL (base + confirmed path); ensure env vars match Dashboard → Integration.
 
 ## Related skills
 

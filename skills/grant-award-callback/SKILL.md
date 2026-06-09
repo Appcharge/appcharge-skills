@@ -25,70 +25,99 @@ Implement the Grant Award callback on the publisher backend Appcharge calls afte
 
 ## Workflow
 
-Complete **Phase 1 (Research)** before writing any implementation code.
+Complete **Phase 0** and **Phase 1** before writing any implementation code.
+
+### Phase 0 — Confirm with user (required)
+
+Ask the user explicitly. If research already suggests an answer, propose it and ask to confirm or override. **Do not implement until answered.**
+
+**Routing and secrets (all callbacks)**
+
+1. Which **route path** should host this webhook? (suggestion: `/callbacks/grant-award`)
+2. Which **file** registers HTTP routes for this service?
+3. Which **env var or config key** stores the Appcharge **main key** (webhook signature signing secret)?
+4. Which **env var or config key** stores the **publisher token** (`x-publisher-token`)?
+
+**Domain mapping (this callback)**
+
+5. Which **model and field** does incoming `playerId` map to in your domain?
+6. Which **service** grants inventory/currency from `products[]` (by `sku` / `amount`)?
+7. Which **field or transaction ID** should be returned as `publisherPurchaseId` after a successful grant?
+8. How should **`orderId`** / **`purchaseId`** be used for idempotency (existing table, unique constraint)?
 
 ### Phase 1 — Research (required)
 
 #### 1.1 Project structure and conventions
 
-- Detect language, framework, package manager, and HTTP server.
-- Map project layout: routes/controllers, middleware, services, inventory/wallet modules, config.
-- Note naming conventions for handlers, routes, env vars, and error responses.
-- Identify dependencies for HTTP, JSON, crypto, and idempotent persistence.
+- Detect language, framework, routes/controllers, inventory/wallet modules, config.
 
 #### 1.2 Existing Appcharge integration
 
-Search the codebase for Appcharge-related code before adding anything new:
-
-- Other callback handlers (authenticate-player, personalize, initiate-game-auth)
-- Signature verification, `x-publisher-token` validation, main-key config
-- Shared middleware, utils, or services for Appcharge callbacks
-- Env vars or config for publisher token, main key, and registered callback URLs
-
-**Reuse** existing helpers; do not duplicate verification or config loading.
+Search for other callbacks, signature verification, shared middleware/utils. **Reuse** before adding new code.
 
 #### 1.3 Test conventions
 
-- Find the test framework, test file locations, and how HTTP handlers are exercised.
-- Locate existing callback, webhook, or fulfillment tests as templates.
-- Note how valid/invalid signatures and error responses are asserted.
+- Find test framework, handler test patterns, existing webhook/fulfillment tests.
 
 #### 1.4 Fetch official docs (required)
 
-Run the `curl` commands in skill-local references only (these ship with the skill when installed via `npx skills add`; repo-root `docs/` is not available in client projects):
+Run `curl` from skill-local references (shipped with `npx skills add`):
 
-- [references/api-contract.md](references/api-contract.md) — endpoint request/response contract
-- [references/secure-communication.md](references/secure-communication.md) — signature and token verification
+- [references/api-contract.md](references/api-contract.md)
+- [references/secure-communication.md](references/secure-communication.md)
 
 Implement from the **fetched markdown only**.
 
 ### Phase 2 — Implementation
 
-Apply findings from Phase 1 throughout:
+Use Phase 0 answers and Phase 1 findings throughout.
 
-1. **Secure ingress** — Per fetched secure-communication spec: raw body → verify `signature` → validate `x-publisher-token` → parse JSON. Use existing Appcharge middleware if present.
-2. **Add route** — `POST` only; align path with repo conventions (default suggestion: `/callbacks/grant-award`).
-3. **Business logic** — Idempotent grant by `orderId` / `purchaseId`; delegate to existing inventory/wallet services:
-   - Resolve `playerId`, credit `products`, persist publisher-side purchase ID
-   - Handle `action` `purchase` vs `bonus`; respect `awardFlow` `manual_retry` if applicable
-   - Parse `sessionMetadata` if the game stores JSON there
-4. **Respond**
-   - Success: `200` + `{ "publisherPurchaseId": "<your-transaction-id>" }`
-   - Client errors (unknown player, invalid SKU): `400` + `publisherErrorMessage`
-   - Transient failures: `500` + `publisherErrorMessage`
-5. **Tests** — Add unit tests using project conventions from §1.3:
-   - Valid signature + happy path returns `publisherPurchaseId`
-   - Invalid signature → documented `401`/`403`
-   - Idempotent re-delivery of same order
-   - Missing `publisherPurchaseId` on success path forbidden
-6. **Wire config** — Document callback URL and secrets using the project's config/env naming; align with Publisher Dashboard.
+#### Signature verification
+
+Follow [references/secure-communication.md](references/secure-communication.md):
+
+1. Register route as `POST` at the user-confirmed path in the user-confirmed router file.
+2. Read **raw body** before JSON parsing.
+3. Verify `signature` (HMAC-SHA256, `t=<ms>.<rawBody>`, ~5 min replay window) using the user-confirmed main-key env var.
+4. Validate `x-publisher-token` against the user-confirmed publisher-token env var.
+
+#### Payload handling
+
+After verification, parse `PlayerOrderReportRequest` and delegate to domain services:
+
+| Payload field | Handler action |
+|---------------|----------------|
+| `playerId` | Resolve player via Phase 0 Q5 model/field; reject unknown player → `400` |
+| `products[]` | Grant each product (`sku`, `amount`) via Phase 0 Q6 service |
+| `orderId`, `purchaseId` | Idempotent key per Phase 0 Q8 — skip duplicate grants |
+| `action` | `purchase` vs `bonus` — route to correct grant logic if they differ |
+| `awardFlow` | Respect `manual_retry` when applicable |
+| `sessionMetadata` | Parse JSON string if the game stores session context |
+| `bundleId`, `sku` | Offer reference for logging/validation |
+
+On success → `200` + `{ "publisherPurchaseId": "<Phase 0 Q7 value>" }`.
+
+On client error (invalid player, bad SKU) → `400` + `{ "publisherErrorMessage": "..." }`.
+
+On transient failure → `500` + `{ "publisherErrorMessage": "..." }`.
+
+**Critical:** success responses must include a valid `publisherPurchaseId` or Appcharge marks the award failed.
+
+#### Tests
+
+- Valid signature + happy path returns `publisherPurchaseId`
+- Invalid signature → `401`/`403`
+- Idempotent re-delivery of same `orderId`
+- Unknown `playerId` → `400`
+
+#### Dashboard
+
+Register full callback URL; align env vars with Dashboard → Integration.
 
 ## Handler sketch
 
-Delegate to existing inventory/wallet services; do not duplicate domain logic in the HTTP layer.
-
 ```text
-verify(headers, rawBody) → parse(PlayerOrderReportRequest) → grant(order) → JSON 200
+verify(headers, rawBody) → parse(order) → grant(playerId, products, orderId) → { publisherPurchaseId }
 ```
 
 ## Related skills
