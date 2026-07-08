@@ -1,0 +1,20 @@
+name: Wiz IaC Scan
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches: [master]
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  wiz:
+    uses: Appcharge/github-actions-warehouse/.github/workflows/wiz-iac-scan.yml@master
+    with:
+      policy: "appcharge-iac-critical"
+    secrets:
+      WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+      WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
