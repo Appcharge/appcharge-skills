@@ -1,0 +1,18 @@
+name: PR Complexity Analysis
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  analyze:
+    uses: Appcharge/github-actions-warehouse/.github/workflows/pr-complexity-analysis.yml@master
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CORALOGIX_API_KEY_EXPORTER: ${{ secrets.CORALOGIX_API_KEY_EXPORTER }}
+      DEVOPS_SA_PAT: ${{ secrets.DEVOPS_SA_PAT }}
