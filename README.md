@@ -49,6 +49,20 @@ These skills guide an agent to add **Appcharge → publisher** HTTP callbacks in
 | `authenticate-player-callback` | Validate web store login (SSO, password, OTP) | [authenticate-player-callback.md](https://docs.appcharge.com/api-reference/webstore/player-authentication/authenticate-player-callback.md) |
 | `initiate-game-auth-callback` | Start **Game Redirect Login** (`deepLink` + `accessToken`) | [initiate-game-auth-callback.md](https://docs.appcharge.com/api-reference/webstore/player-authentication/initiate-game-auth-callback.md) |
 
+### Publisher event webhooks
+
+These skills guide an agent to add **Appcharge → publisher** Events V2 webhooks — real-time player activity notifications (fire-and-forget; ack with `2xx` only).
+
+| Skill | Endpoint | Official spec (markdown) |
+|-------|----------|------------------------|
+| `events-v2-webhook` | Receive Events V2 payloads; verify signature; dedup by `eventId` | [events/v2/introduction.md](https://docs.appcharge.com/api-reference/events/v2/introduction.md) |
+
+Install the Events V2 skill:
+
+```bash
+npx skills add Appcharge/appcharge-skills --skill events-v2-webhook -y
+```
+
 Install one callback skill:
 
 ```bash
@@ -63,6 +77,8 @@ initiate-game-auth-callback  →  (game)  →  authenticate-player-callback
 personalize-webstore-callback  ←──────── login / purchase / sync
         ↓
 grant-award-callback  ←  checkout complete
+
+events-v2-webhook  ←  parallel stream of login, order, and store events (Events Center)
 ```
 
 ## Update skills
@@ -137,7 +153,8 @@ Plugin skills are namespaced: `/appcharge-skills:<skill-name>`.
 
 ```text
 appcharge-skills/
-├── docs/callbacks/              # Source for secure-communication (also copied per skill)
+├── docs/callbacks/              # Source for callback secure-communication (also copied per skill)
+├── docs/events/                 # Source for Events V2 secure-communication (also copied per skill)
 └── skills/
     └── <skill-name>/
         ├── SKILL.md             # Required
