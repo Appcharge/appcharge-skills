@@ -1,0 +1,18 @@
+name: wiz-dependencies
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  wiz-dependencies:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft != true
+    uses: Appcharge/github-actions-warehouse/.github/workflows/wiz-dependency-scan.yml@master
+    secrets:
+      WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+      WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
